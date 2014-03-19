@@ -22,9 +22,9 @@ require 'optparse'
 
 def main()
   usage = <<eot
-  Usage: ./launch create|update STACK_TYPE ENVIRONMENT_TYPE [ENVIRONMENT_NAME]
-    STACK_TYPE is the directory found in stacks, i.e manta-site
-    ENVIRONMENT_TYPE is i.e smoketest
+  Usage: ./launch create|update|print STACK_TYPE ENVIRONMENT_TYPE [ENVIRONMENT_NAME]
+    STACK_TYPE found in stacks, i.e manta-site
+    ENVIRONMENT_TYPE is e.g. smoketest, used as a key into configuration
     ENVIRONMENT_NAME is your unique name, i.e stsmith
   Launch a cloudformation template.
 eot
@@ -37,6 +37,9 @@ eot
     end
     opts.on('-d', '--deployconfig URL', 'stackhub URL for deployconfig') do |url|
       cli_opts[:deployconfig] = url
+    end
+    opts.on('-b', '--basepath PATH', 'base path for stacks; defaults to ./stacks') do |basepath|
+      cli_opts[:basepath] = basepath
     end
   end
   optparse.parse!
@@ -63,16 +66,18 @@ eot
   when "juddmontgomery"
      whoami="jmontgomery"
   end
+
+  basepath = cli_opts[:basepath] || "stacks"
   
   action = ARGV.shift
   stack_type = ARGV.shift
-  template_path = "stacks/#{stack_type}/main.yml"
+  template_path = "#{basepath}/#{stack_type}/main.yml"
   environment_type = ARGV.shift
   environment_name = ARGV.shift || whoami
   
   cfn = AWS::CloudFormation.new
   stack_name = "#{stack_type}--#{environment_name}--#{environment_type}"
-  conf_path = "stacks/#{stack_type}/conf/#{environment_type}.yml"
+  conf_path = "#{basepath}/#{stack_type}/conf/#{environment_type}.yml"
 
   stack = cfn.stacks[stack_name]
   if stack.exists?
@@ -82,9 +87,10 @@ eot
       exit 0
     end
   end
-  
-  if !action || !/(^create$)|(^update$)/.match(action) || !template_path || !File.file?(template_path) || !File.file?(conf_path)
-    if action && !/(^create$)|(^update$)/.match(action) 
+ 
+  allowed_actions = ['create', 'update', 'print'] 
+  if !action || !allowed_actions.include?(action) || !template_path || !File.file?(template_path) || !File.file?(conf_path)
+    if action && ! allowed_actions.include?(action)
       puts "unknown action (#{action})"
     end
   
@@ -131,6 +137,11 @@ eot
 #####
   template_text = template_hash.to_json
 
+  if action == "print" #hack. TODO: dispatch actions sanely
+    puts JSON.pretty_generate(template_hash)
+    exit 0
+  end
+
   s3 = AWS::S3.new
   cfn_bucket = s3.buckets['manta-cloudformation']
   if opts['TemplateSource'] == 'ploy'
@@ -169,7 +180,7 @@ eot
       opts_parameters[key] = opts[key]
     end
   end
-  
+ 
   template_parameters_obj = cfn_bucket.objects.create("#{s3_path}/parameters.yml", opts_parameters.to_yaml)
   
   if action == 'create'
