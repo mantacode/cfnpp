@@ -1,0 +1,308 @@
+#!/usr/bin/env ruby
+
+unless Kernel.respond_to?(:require_relative)
+  module Kernel
+    def require_relative(path)
+      require File.join(File.dirname(caller[0]), path.to_str)
+    end
+  end
+end
+
+require 'rubygems'
+require 'bundler/setup'
+require 'aws-sdk'
+require 'securerandom'
+require 'json'
+require './lib/cfnpp/transform'
+require 'awesome_print'
+require 'yaml'
+require 'dogapi'
+require 'ploy/yamlreader'
+require 'optparse'
+
+def main()
+  usage = <<eot
+  Usage: ./launch create|update STACK_TYPE ENVIRONMENT_TYPE [ENVIRONMENT_NAME]
+    STACK_TYPE is the directory found in stacks, i.e manta-site
+    ENVIRONMENT_TYPE is i.e smoketest
+    ENVIRONMENT_NAME is your unique name, i.e stsmith
+  Launch a cloudformation template.
+eot
+
+  cli_opts = {}
+  optparse = OptionParser.new do|opts|
+    opts.on('-h', '--help', 'Display this screen') do
+      puts usage
+      exit
+    end
+    opts.on('-d', '--deployconfig URL', 'stackhub URL for deployconfig') do |url|
+      cli_opts[:deployconfig] = url
+    end
+  end
+  optparse.parse!
+
+  if cli_opts[:deployconfig]
+    yr = Ploy::YamlReader.new
+    conf = yr.from_http(cli_opts[:deployconfig])
+    if (conf['locked'])
+      puts "skipping autoupdate: deployconfig is locked"
+      exit
+    end
+    unless (conf['stack_autoupdate'])
+      puts "skipping autoupdate: autoupdate is false"
+      exit
+    end
+  end
+
+  whoami = `whoami`
+  whoami.chomp!
+  
+  case whoami
+  when "judd"
+     whoami="jmontgomery"
+  when "juddmontgomery"
+     whoami="jmontgomery"
+  end
+  
+  action = ARGV.shift
+  stack_type = ARGV.shift
+  template_path = "stacks/#{stack_type}/main.yml"
+  environment_type = ARGV.shift
+  environment_name = ARGV.shift || whoami
+  
+  cfn = AWS::CloudFormation.new
+  stack_name = "#{stack_type}--#{environment_name}--#{environment_type}"
+  conf_path = "stacks/#{stack_type}/conf/#{environment_type}.yml"
+
+  stack = cfn.stacks[stack_name]
+  if stack.exists?
+    status = stack.status
+    if status =~ /_IN_PROGRESS$/
+      puts "can't update stack (#{stack_name}) while status is (#{status})"
+      exit 0
+    end
+  end
+  
+  if !action || !/(^create$)|(^update$)/.match(action) || !template_path || !File.file?(template_path) || !File.file?(conf_path)
+    if action && !/(^create$)|(^update$)/.match(action) 
+      puts "unknown action (#{action})"
+    end
+  
+    if conf_path
+      if conf_path && !File.file?(conf_path)
+        puts "ERROR: file (#{conf_path}) not found for stack (#{environment_type})"
+      end
+    end
+  
+    if stack_type
+      if template_path && !File.file?(template_path)
+        puts "ERROR: file (#{template_path}) not found for stack (#{stack_type})"
+      end
+    end
+  
+    if environment_type && !/(^smoketest$)/.match(environment_type)
+      puts "ERROR: unknown environment_type (#{environment_type})"
+    end
+  
+    puts usage
+    exit 1
+  end
+  
+  conf_yaml = File.read(conf_path)
+  opts = YAML::load(conf_yaml)
+  
+  timestamp = Time.now.utc.strftime("%Y-%m-%dT%H.%M.%S.%LZ")
+  template_info = get_template_info()
+  opts['LastUpdateTimestamp'] = timestamp
+  opts['TemplateGitRevision'] = template_info[:gitrev]
+  opts['TemplateGitStatus'] = template_info[:gitstatus]
+  opts['TemplateSource'] = template_info[:source]
+  opts['LaunchInstanceId'] = template_info[:instanceid]
+  opts['StackType'] = stack_type
+  opts['StackName'] = stack_name
+  opts['EnvironmentName'] = environment_name
+  opts['EnvironmentType'] = environment_type
+  
+  template_hash = CfnPP::Transform.load_file(template_path, opts)
+###### - uncomment these 3 lines to see template output
+  #template_text = JSON.pretty_generate(template_hash)
+  # puts template_text
+  # exit
+#####
+  template_text = template_hash.to_json
+
+  s3 = AWS::S3.new
+  cfn_bucket = s3.buckets['manta-cloudformation']
+  if opts['TemplateSource'] == 'ploy'
+    prev_opts = find_previous_ploy_update(cfn_bucket, opts)
+    if prev_opts
+      last_update_timestamp = prev_opts['LastUpdateTimestamp']
+      template_git_revision = prev_opts['TemplateGitRevision']
+      instanceid = prev_opts['LaunchInstanceId']
+      puts "Update to git revision #{template_git_revision} already attempted at #{last_update_timestamp} from instance (#{instanceid})."
+      exit 0
+    end
+  end
+  
+  s3_path = "stacks/#{stack_name}/#{timestamp}"
+  template_text_obj = cfn_bucket.objects.create("#{s3_path}/template.json", template_text)
+  template_url = template_text_obj.public_url
+  puts "uploaded template to (#{template_url}) size (#{template_text.bytesize})"
+  
+  template_status = cfn.validate_template(template_url)
+  if template_status.has_key? :code
+    puts "error in template (#{template_path})"
+    puts template_status[:code]
+    puts template_status[:message]
+    exit 1
+  end
+  
+  template_parameters = []
+  if template_status.has_key? :parameters
+    template_parameters = template_status[:parameters]
+  end
+  
+  opts_parameters = {}
+  template_parameters.each do |param|
+    key = param[:parameter_key]
+    if opts.has_key? key
+      opts_parameters[key] = opts[key]
+    end
+  end
+  
+  template_parameters_obj = cfn_bucket.objects.create("#{s3_path}/parameters.yml", opts_parameters.to_yaml)
+  
+  if action == 'create'
+    puts "creating stack (#{stack_name}) from template (#{template_path}) with config (#{conf_path})"
+    stack = cfn.stacks.create(stack_name,
+                              template_url,
+                              :parameters => opts_parameters,
+                              :capabilities => ['CAPABILITY_IAM'])
+  end
+  
+  if action ==  'update'
+    current_resource_count = 0
+    current_resource_count = stack.resources.count()
+    stack.resources.each_batch do |batch|
+      current_resource_count += batch.count
+    end
+    puts "updating stack (#{stack_name}) from template (#{template_path}) with config (#{conf_path})"
+    puts "stack currently contains (#{current_resource_count}) resources"
+
+    # Send an event to Datadog:
+    # disabled while decoupling cfnpp; TODO: enable
+    if false
+      api_key = ''
+      dog = Dogapi::Client.new(api_key)
+      dd_event_title = "stack update"
+      dd_event_text = "#{stack_name} stack was updated by #{whoami}"
+      dd_event_tags = "deployment, stackname:#{stack_name}"
+      dog.emit_event(Dogapi::Event.new("#{dd_event_text}", :msg_title => "#{dd_event_title}", :tags => "#{dd_event_tags}"))
+    end
+
+    # Update the stack
+    stack.update(:template => template_url,
+                         :parameters => opts_parameters,
+                         :capabilities => ['CAPABILITY_IAM'])
+  end
+  
+  after_update(stack, timestamp)
+end
+
+def after_update(stack, timestamp)
+  stack_name = stack.name
+  #cmd = "watch -n 10 cfn-describe-stack-events #{stack_name}"
+  cmd = "watch -n 10 bin/get_stack_events.rb #{stack_name}"
+  puts cmd
+  if STDIN.tty? && STDOUT.tty?
+    puts "STDIN and STDOUT are ttys!"
+    exec cmd
+  end
+  
+  # This is all working, tested code, just not sure it belongs here. --stsmith
+  #stack_timestamp = ''
+  #status = ''
+  #begin
+  #  loop do
+  #    # During an in-progress update, the parameters report the new values.
+  #    # If rollback happens, the parameters revert to their previous values.
+  #    # This behavior makes sense and is helpful.
+  #    stack_timestamp = stack.parameters['LastUpdateTimestamp']
+  #    status = stack.status
+  #    puts "#{stack_name} #{status} #{stack_timestamp}"
+  #    break unless status =~ /(CREATE|UPDATE)_IN_PROGRESS$/ && stack_timestamp == timestamp
+  #    sleep 5
+  #  end
+  #
+  #rescue AWS::CloudFormation::Errors::Throttling
+  #  puts "API request throttled."
+  #  retry
+  #end
+  #
+  #exit_status = 1
+  #if status =~ /(CREATE|UPDATE)_COMPLETE/ && stack_timestamp == timestamp
+  #    exit_status = 0
+  #end
+  #exit exit_status
+end
+
+def get_template_info()
+  gitrev = ''
+  gitstatus = ''
+  source = '' # ploy or git
+  
+  pwd = Dir.pwd
+
+  # Try from ploy package.
+  package = `dpkg -S #{pwd} 2>/dev/null`
+  if package && package =~ /^cloudformation-tools:/
+    gitrev = `dpkg-query -W -f='${gitrev}' cloudformation-tools`
+  end
+
+  #If stin and stdout or tty then someone is running this from command line.
+  if STDIN.tty? && STDOUT.tty?
+    source = 'cmd'
+  else
+    source = 'ploy'
+  end
+
+  # Try from git.
+  if gitrev == ''
+    gitrev = `/usr/bin/git log --format='%H' -n 1`
+    gitrev.chomp!
+    if gitrev
+      source = 'git'
+      gitstatus = `git status --porcelain`
+    end
+  end
+
+  instanceid = `/bin/netcat 169.254.169.254 80 -w 1 -q 0 </dev/null && /usr/bin/ec2metadata --instance-id`
+  instanceid.chomp!
+
+  template = {
+    :gitrev => gitrev,
+    :gitstatus => gitstatus,
+    :source => source,
+    :instanceid => instanceid
+  }
+end
+
+def find_previous_ploy_update(bucket, opts)
+  stack_name = opts['StackName']
+  launch_list = bucket.objects.with_prefix("stacks/#{stack_name}").sort do |a,b|
+    a.key <=> b.key
+  end
+  launch_list.each do |o|
+    if o.key =~ /\/parameters.yml$/
+      prev_opts = YAML::load(o.read)
+      if prev_opts['TemplateSource'] == opts['TemplateSource']
+        if prev_opts['TemplateGitRevision'] == opts['TemplateGitRevision']
+          return prev_opts
+        end
+      end
+    end
+  end
+  return nil
+end
+
+main()

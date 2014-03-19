@@ -1,0 +1,7 @@
+source 'http://rubygems.org'
+gem 'aws-sdk'
+gem 'json'
+gem 'awesome_print'
+gem 'travis'
+gem 'dogapi'
+gem 'ploy'
