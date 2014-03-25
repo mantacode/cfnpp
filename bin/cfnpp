@@ -129,7 +129,7 @@ eot
   opts['EnvironmentName'] = environment_name
   opts['EnvironmentType'] = environment_type
   
-  template_hash = CfnPP::Transform.load_file(template_path, opts)
+  template_hash = CfnPP::Transform.load_file(template_path, opts).data
 ###### - uncomment these 3 lines to see template output
   #template_text = JSON.pretty_generate(template_hash)
   # puts template_text
