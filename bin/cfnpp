@@ -183,6 +183,11 @@ eot
 end
 
 def do_upload(uploader, template_result, opts)
+
+  template_result.substacks.each do |substack_result|
+    do_upload(uploader, substack_result, opts)
+  end
+
   upload_res = uploader.upload_template(template_result, opts)
 
   if upload_res[:error]
