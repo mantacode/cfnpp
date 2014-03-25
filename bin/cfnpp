@@ -14,6 +14,7 @@ require 'aws-sdk'
 require 'securerandom'
 require 'json'
 require './lib/cfnpp/transform'
+require './lib/cfnpp/uploader'
 require 'awesome_print'
 require 'yaml'
 require 'dogapi'
@@ -88,7 +89,7 @@ eot
     end
   end
  
-  allowed_actions = ['create', 'update', 'print'] 
+  allowed_actions = ['create', 'update', 'print', 'validate'] 
   if !action || !allowed_actions.include?(action) || !template_path || !File.file?(template_path) || !File.file?(conf_path)
     if action && ! allowed_actions.include?(action)
       puts "unknown action (#{action})"
@@ -128,8 +129,9 @@ eot
   opts['StackName'] = stack_name
   opts['EnvironmentName'] = environment_name
   opts['EnvironmentType'] = environment_type
-  
-  template_hash = CfnPP::Transform.load_file(template_path, opts).data
+ 
+  template_result = CfnPP::Transform.load_file(template_path, opts) 
+  template_hash = template_result.data
 ###### - uncomment these 3 lines to see template output
   #template_text = JSON.pretty_generate(template_hash)
   # puts template_text
@@ -142,47 +144,31 @@ eot
     exit 0
   end
 
-  s3 = AWS::S3.new
-  cfn_bucket = s3.buckets['manta-cloudformation']
-  if opts['TemplateSource'] == 'ploy'
-    prev_opts = find_previous_ploy_update(cfn_bucket, opts)
-    if prev_opts
+  uploader = CfnPP::Uploader.new('manta-cloudformation', stack_name)
+  upload_res = uploader.upload_template(template_result, opts)
+
+  if upload_res[:error]
+    if upload_res[:error] == 'validation_error'
+      vs = upload_res[:validation_status]
+      puts "validation error code: #{vs[:code]}"
+      puts "validation error message: #{vs[:message]}"
+    elsif upload_res[:error] == 'already_updated'
+      prev_opts = upload_res[:prev_opts]
       last_update_timestamp = prev_opts['LastUpdateTimestamp']
       template_git_revision = prev_opts['TemplateGitRevision']
       instanceid = prev_opts['LaunchInstanceId']
       puts "Update to git revision #{template_git_revision} already attempted at #{last_update_timestamp} from instance (#{instanceid})."
-      exit 0
     end
-  end
-  
-  s3_path = "stacks/#{stack_name}/#{timestamp}"
-  template_text_obj = cfn_bucket.objects.create("#{s3_path}/template.json", template_text)
-  template_url = template_text_obj.public_url
-  puts "uploaded template to (#{template_url}) size (#{template_text.bytesize})"
-  
-  template_status = cfn.validate_template(template_url)
-  if template_status.has_key? :code
-    puts "error in template (#{template_path})"
-    puts template_status[:code]
-    puts template_status[:message]
     exit 1
+  else
+    puts "uploaded #{upload_res[:url]}"
   end
-  
-  template_parameters = []
-  if template_status.has_key? :parameters
-    template_parameters = template_status[:parameters]
+
+  if action == 'validate'
+    puts 'uploading and validating only; no updates applied'
+    exit 0
   end
-  
-  opts_parameters = {}
-  template_parameters.each do |param|
-    key = param[:parameter_key]
-    if opts.has_key? key
-      opts_parameters[key] = opts[key]
-    end
-  end
- 
-  template_parameters_obj = cfn_bucket.objects.create("#{s3_path}/parameters.yml", opts_parameters.to_yaml)
-  
+
   if action == 'create'
     puts "creating stack (#{stack_name}) from template (#{template_path}) with config (#{conf_path})"
     stack = cfn.stacks.create(stack_name,
@@ -296,24 +282,6 @@ def get_template_info()
     :source => source,
     :instanceid => instanceid
   }
-end
-
-def find_previous_ploy_update(bucket, opts)
-  stack_name = opts['StackName']
-  launch_list = bucket.objects.with_prefix("stacks/#{stack_name}").sort do |a,b|
-    a.key <=> b.key
-  end
-  launch_list.each do |o|
-    if o.key =~ /\/parameters.yml$/
-      prev_opts = YAML::load(o.read)
-      if prev_opts['TemplateSource'] == opts['TemplateSource']
-        if prev_opts['TemplateGitRevision'] == opts['TemplateGitRevision']
-          return prev_opts
-        end
-      end
-    end
-  end
-  return nil
 end
 
 main()

@@ -9,7 +9,8 @@ module CfnPP
       return @data
     end
 
-    def filename
+    def name
+      return 'static-test-name'
     end
   end
 end
