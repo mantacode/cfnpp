@@ -131,38 +131,14 @@ eot
   opts['EnvironmentType'] = environment_type
  
   template_result = CfnPP::Transform.load_file(template_path, opts) 
-  template_hash = template_result.data
-###### - uncomment these 3 lines to see template output
-  #template_text = JSON.pretty_generate(template_hash)
-  # puts template_text
-  # exit
-#####
-  template_text = template_hash.to_json
 
   if action == "print" #hack. TODO: dispatch actions sanely
-    puts JSON.pretty_generate(template_hash)
+    puts JSON.pretty_generate(template_result.data)
     exit 0
   end
 
   uploader = CfnPP::Uploader.new('manta-cloudformation', stack_name)
-  upload_res = uploader.upload_template(template_result, opts)
-
-  if upload_res[:error]
-    if upload_res[:error] == 'validation_error'
-      vs = upload_res[:validation_status]
-      puts "validation error code: #{vs[:code]}"
-      puts "validation error message: #{vs[:message]}"
-    elsif upload_res[:error] == 'already_updated'
-      prev_opts = upload_res[:prev_opts]
-      last_update_timestamp = prev_opts['LastUpdateTimestamp']
-      template_git_revision = prev_opts['TemplateGitRevision']
-      instanceid = prev_opts['LaunchInstanceId']
-      puts "Update to git revision #{template_git_revision} already attempted at #{last_update_timestamp} from instance (#{instanceid})."
-    end
-    exit 1
-  else
-    puts "uploaded #{upload_res[:url]}"
-  end
+  do_upload(uploader, template_result, opts)
 
   if action == 'validate'
     puts 'uploading and validating only; no updates applied'
@@ -204,6 +180,28 @@ eot
   end
   
   after_update(stack, timestamp)
+end
+
+def do_upload(uploader, template_result, opts)
+  upload_res = uploader.upload_template(template_result, opts)
+
+  if upload_res[:error]
+    if upload_res[:error] == 'validation_error'
+      vs = upload_res[:validation_status]
+      puts "validation error code: #{vs[:code]}"
+      puts "validation error message: #{vs[:message]}"
+    elsif upload_res[:error] == 'already_updated'
+      prev_opts = upload_res[:prev_opts]
+      last_update_timestamp = prev_opts['LastUpdateTimestamp']
+      template_git_revision = prev_opts['TemplateGitRevision']
+      instanceid = prev_opts['LaunchInstanceId']
+      puts "Update to git revision #{template_git_revision} already attempted at #{last_update_timestamp} from instance (#{instanceid})."
+    end
+    exit 1
+  else
+    puts "uploaded #{upload_res[:url]}"
+  end
+
 end
 
 def after_update(stack, timestamp)

@@ -1,14 +1,14 @@
 module CfnPP
   class TemplateResult
-    def initialize(stackname, data)
+    attr_accessor :substacks
+    attr_accessor :data
+
+    def initialize(stackname, data, substacks = [])
       @stackname = stackname
       @data = data
+      @substacks = substacks
     end
     
-    def data
-      return @data
-    end
-
     def name
       return 'static-test-name'
     end
