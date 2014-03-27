@@ -1,0 +1,12 @@
+{
+  "Resources": {
+    "Key": {
+      "Fn::Join": [
+        "",
+        [
+          "text goes here"
+        ]
+      ]
+    }
+  }
+}
