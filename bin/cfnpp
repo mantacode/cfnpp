@@ -155,7 +155,7 @@ eot
     exit 0
   end
 
-  do_upload(uploader, template_result, opts)
+  upload_results = do_upload(uploader, template_result, opts)
 
   if action == 'validate'
     puts 'uploading and validating only; no updates applied'
@@ -165,8 +165,8 @@ eot
   if action == 'create'
     puts "creating stack (#{stack_name}) from template (#{template_path}) with config (#{conf_path})"
     stack = cfn.stacks.create(stack_name,
-                              template_url,
-                              :parameters => opts_parameters,
+                              upload_results[:url],
+                              :parameters => upload_results[:opts_parameters],
                               :capabilities => ['CAPABILITY_IAM'])
   end
   
@@ -191,8 +191,8 @@ eot
     end
 
     # Update the stack
-    stack.update(:template => template_url,
-                         :parameters => opts_parameters,
+    stack.update(:template => upload_results[:url],
+                         :parameters => upload_results[:opts_parameters],
                          :capabilities => ['CAPABILITY_IAM'])
   end
   
@@ -223,6 +223,8 @@ def do_upload(uploader, template_result, opts)
   else
     puts "uploaded #{upload_res[:url]}"
   end
+
+  return upload_res
 
 end
 
