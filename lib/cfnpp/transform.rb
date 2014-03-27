@@ -1,6 +1,7 @@
 require 'json'
 require 'yaml'
 require_relative 'replacer'
+require_relative 'templateresult'
 require 'set'
 require 'erb'
 
@@ -17,27 +18,27 @@ module CfnPP
     # This is the easiest way to load things. It takes care of
     # setting reasonable file base for includes, etc., and gives
     # you back a hash ready for use.
-    def self.load_file(path, opts = {})
-      return self.load_yaml(File.read(path), path, opts)
+    def self.load_file(path, opts = {}, name = "main")
+      return self.load_yaml(File.read(path), path, opts, name)
     end
 
     # returns a ruby hash, from unparsed YAML input text.
     #
-    def self.load_yaml(yaml_txt, filebase=".", opts={})
+    def self.load_yaml(yaml_txt, filebase=".", opts={}, name = "main")
       h = YAML::load(yaml_txt)
-      return self.new(h, filebase, opts).as_hash
+      return self.new(h, filebase, opts, name).as_template_result
     end
 
     # CfnPP::Transform is initialized with a hash and an optional file base
     # parameter. The file base will default to ".", which may or may
     # not be what you want.
-    def initialize(in_hash, filebase=".", opts={})
+    def initialize(in_hash, filebase=".", opts={}, name="main")
+      @name = name
       @opts = opts
       @filebase = filebase
       @in_hash = { :root => in_hash }
       @tops = self.class.stdtops()
       trans_hash(@in_hash)
-      #@in_hash = @in_hash[:hack]
       @in_hash = @in_hash[:root]
       lift
       @in_hash = apply_opts(@in_hash, opts)
@@ -47,6 +48,10 @@ module CfnPP
     # Return the parsed, processed CfnPP YAML file as a ruby hash
     def as_hash
       return @in_hash
+    end
+
+    def as_template_result
+      return CfnPP::TemplateResult.new(@name, @in_hash)
     end
 
     private
