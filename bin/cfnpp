@@ -137,14 +137,15 @@ eot
   opts['EnvironmentName'] = environment_name
   opts['EnvironmentType'] = environment_type
  
-  template_result = CfnPP::Transform.load_file(template_path, opts) 
+  uploader = CfnPP::Uploader.new('manta-cloudformation', stack_name)
+
+  template_result = CfnPP::Transform.load_file(template_path, opts, "main", uploader.s3_path) 
 
   if action == "print" #hack. TODO: dispatch actions sanely
     puts JSON.pretty_generate(template_result.data)
     exit 0
   end
 
-  uploader = CfnPP::Uploader.new('manta-cloudformation', stack_name)
   do_upload(uploader, template_result, opts)
 
   if action == 'validate'

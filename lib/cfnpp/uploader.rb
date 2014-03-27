@@ -16,6 +16,10 @@ module CfnPP
       return Time.now.utc.strftime("%Y-%m-%dT%H.%M.%S.%LZ")
     end
 
+    def s3_path
+      return @s3_path
+    end
+
     def upload_template(template_result, opts)
       r = { :url => nil, :error => nil, :validation_status => nil }
 
