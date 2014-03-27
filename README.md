@@ -14,6 +14,9 @@ $ cfnpp -b ./stacks $whatever_else
 
 and you can use it just like launch2. "-b" sets the base path for stacks.
 
+Bundler makes life good but a little weird, so if you have problems running it at all,
+or an error about ```cfnpp/transform```, that's why.
+
 ## Installation
 
 ```

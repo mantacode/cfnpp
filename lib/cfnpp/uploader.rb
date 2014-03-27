@@ -37,17 +37,22 @@ module CfnPP
         r[:error] = 'validation_error'
       else
         tp = r[:validation_status].fetch(:parameters, [])
-        upload_parameters(template_result.name, tp, opts)
+        r[:opts_parameters] = opts_parameters(tp, opts)
+        upload_parameters(template_result.name, r[:opts_parameters])
       end
       return r
     end
 
-    def upload_parameters(name, params, opts)
+    def opts_parameters(params, opts)
       opts_parameters = {}
       params.each do |param|
         key = param[:parameter_key]
         opts_parameters[key] = opts[key] if opts.has_key? key
       end
+      return opts_parameters
+    end
+
+    def upload_parameters(name, opts_parameters)
       return @bucket.objects.create("#{@s3_path}/#{name}/parameters.yml", opts_parameters.to_yaml)
     end
 
