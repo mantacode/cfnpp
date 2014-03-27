@@ -40,6 +40,7 @@ module CfnPP
       @tops = self.class.stdtops()
       trans_hash(@in_hash)
       @in_hash = @in_hash[:root]
+      @substacks = grab_stacks(@in_hash)
       lift
       @in_hash = apply_opts(@in_hash, opts)
       prune(@in_hash)
@@ -51,7 +52,7 @@ module CfnPP
     end
 
     def as_template_result
-      return CfnPP::TemplateResult.new(@name, @in_hash)
+      return CfnPP::TemplateResult.new(@name, @in_hash, @substacks)
     end
 
     private
@@ -165,6 +166,14 @@ module CfnPP
           v = proc_tmplspec(rec)
           trans(v)
           sub_merge(h, key, v)
+        elsif (h[key].is_a? Hash) and (h[key].has_key? "CfnPPStack")
+          rec = h[key]["CfnPPStack"]
+          if rec.has_key? "inline"
+            inline = rec["inline"]
+            name = rec["name"]
+            rec.delete("inline")
+            rec["result"] = self.new(inline, @filebase, @opts, name).as_template_result
+          end
         else
           trans(h[key])
         end
@@ -192,6 +201,22 @@ module CfnPP
       elsif h.is_a? Array then
         h.each { |e| prune(e) }
       end
+    end
+
+    # return all of the embedded stack objects. super, super
+    # ugly
+    def grab_stacks(h)
+      stacks = []
+      if h.is_a? Hash
+        h.keys.each do |k|
+          if k == "CfnPPStack" and h[k].has_key? "result"
+            stacks.push(h[k]["result"])
+          else
+            stacks.concat(grab_stacks(h[k]))
+          end
+        end
+      end
+      return stacks
     end
 
     # given some defined top keys, find them everywhere, cut them out,
