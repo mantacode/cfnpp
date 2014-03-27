@@ -19,14 +19,14 @@ module CfnPP
     # setting reasonable file base for includes, etc., and gives
     # you back a hash ready for use.
     def self.load_file(path, opts = {}, name = "main", stack_url_base="http://example.com")
-      return self.load_yaml(File.read(path), path, opts, name)
+      return self.load_yaml(File.read(path), path, opts, name, stack_url_base)
     end
 
     # returns a ruby hash, from unparsed YAML input text.
     #
     def self.load_yaml(yaml_txt, filebase=".", opts={}, name = "main", stack_url_base="http://example.com")
       h = YAML::load(yaml_txt)
-      return self.new(h, filebase, opts, name).as_template_result
+      return self.new(h, filebase, opts, name, stack_url_base).as_template_result
     end
 
     # CfnPP::Transform is initialized with a hash and an optional file base

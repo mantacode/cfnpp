@@ -148,7 +148,7 @@ eot
  
   uploader = CfnPP::Uploader.new('manta-cloudformation', stack_name)
 
-  template_result = CfnPP::Transform.load_file(template_path, opts, "main", uploader.s3_path) 
+  template_result = CfnPP::Transform.load_file(template_path, opts, "main", "https://manta-cloudformation.s3.amazonaws.com/#{uploader.s3_path}") 
 
   if action == "print" #hack. TODO: dispatch actions sanely
     puts JSON.pretty_generate(template_result.data)
