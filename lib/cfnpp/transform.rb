@@ -18,13 +18,13 @@ module CfnPP
     # This is the easiest way to load things. It takes care of
     # setting reasonable file base for includes, etc., and gives
     # you back a hash ready for use.
-    def self.load_file(path, opts = {}, name = "main")
+    def self.load_file(path, opts = {}, name = "main", stack_url_base="http://example.com")
       return self.load_yaml(File.read(path), path, opts, name)
     end
 
     # returns a ruby hash, from unparsed YAML input text.
     #
-    def self.load_yaml(yaml_txt, filebase=".", opts={}, name = "main")
+    def self.load_yaml(yaml_txt, filebase=".", opts={}, name = "main", stack_url_base="http://example.com")
       h = YAML::load(yaml_txt)
       return self.new(h, filebase, opts, name).as_template_result
     end
@@ -32,10 +32,11 @@ module CfnPP
     # CfnPP::Transform is initialized with a hash and an optional file base
     # parameter. The file base will default to ".", which may or may
     # not be what you want.
-    def initialize(in_hash, filebase=".", opts={}, name="main")
+    def initialize(in_hash, filebase=".", opts={}, name="main", stack_url_base="http://example.com")
       @name = name
       @opts = opts
       @filebase = filebase
+      @stack_url_base = stack_url_base
       @in_hash = { :root => in_hash }
       @tops = self.class.stdtops()
       trans_hash(@in_hash)
@@ -52,7 +53,7 @@ module CfnPP
     end
 
     def as_template_result
-      return CfnPP::TemplateResult.new(@name, @in_hash, @substacks)
+      return CfnPP::TemplateResult.new(@name, @in_hash, @stack_url_base, @substacks)
     end
 
     private
@@ -172,7 +173,15 @@ module CfnPP
             inline = rec["inline"]
             name = rec["name"]
             rec.delete("inline")
-            rec["result"] = self.class.new(inline, @filebase, @opts, name).as_template_result
+            rec["result"] = self.class.new(inline, @filebase, @opts, name, @stack_url_base).as_template_result
+            rec["Resources"] = {} if not rec["Resources"]
+            rec["Resources"][name] = {
+              "Type" => "AWS::CloudFormation::Stack",
+              "Properties" => {
+                "TemplateURL" => rec["result"].url,
+                "TimeoutInMinutes" => 60,
+              }
+            }
           end
         else
           trans(h[key])
