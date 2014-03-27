@@ -172,7 +172,7 @@ module CfnPP
             inline = rec["inline"]
             name = rec["name"]
             rec.delete("inline")
-            rec["result"] = self.new(inline, @filebase, @opts, name).as_template_result
+            rec["result"] = self.class.new(inline, @filebase, @opts, name).as_template_result
           end
         else
           trans(h[key])
@@ -189,7 +189,7 @@ module CfnPP
     # recursively remove any keys we want cleaned up. due to lifting they
     # can leave junk laying around
     def prune(h)
-      prunes = ["CfnPPTemplate", "MantaTemplateInclude", "MantaTemplate", "MantaInclude", "CfnPPSection"]
+      prunes = ["CfnPPTemplate", "MantaTemplateInclude", "MantaTemplate", "MantaInclude", "CfnPPSection", "CfnPPStack"]
       if h.is_a? Hash then
         h.keys.each do |k|
           if prunes.include? k then

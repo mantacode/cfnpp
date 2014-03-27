@@ -1,0 +1,6 @@
+Resources:
+  CfnPPStack:
+    name: "foo"
+    inline:
+      Resources:
+        Key: value

@@ -42,6 +42,12 @@ eot
     opts.on('-b', '--basepath PATH', 'base path for stacks; defaults to ./stacks') do |basepath|
       cli_opts[:basepath] = basepath
     end
+    opts.on('-f', '--file PATH', 'use PATH instead of $basepath/main.yml for main template') do |filepath|
+      cli_opts[:filepath] = filepath
+    end
+    opts.on('-c', '--conf PATH', 'use PATH instead of $basepath/conf/$environment_type for conf file') do |confpath|
+      cli_opts[:confpath] = confpath
+    end
   end
   optparse.parse!
 
@@ -73,12 +79,13 @@ eot
   action = ARGV.shift
   stack_type = ARGV.shift
   template_path = "#{basepath}/#{stack_type}/main.yml"
+  template_path = cli_opts[:filepath] if cli_opts[:filepath]
   environment_type = ARGV.shift
   environment_name = ARGV.shift || whoami
   
   cfn = AWS::CloudFormation.new
   stack_name = "#{stack_type}--#{environment_name}--#{environment_type}"
-  conf_path = "#{basepath}/#{stack_type}/conf/#{environment_type}.yml"
+  conf_path = cli_opts[:confpath] || "#{basepath}/#{stack_type}/conf/#{environment_type}.yml"
 
   stack = cfn.stacks[stack_name]
   if stack.exists?
