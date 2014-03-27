@@ -39,6 +39,9 @@ eot
     opts.on('-d', '--deployconfig URL', 'stackhub URL for deployconfig') do |url|
       cli_opts[:deployconfig] = url
     end
+    opts.on('-f', '--force', 'Force stack update and disable cancel-bad-rolling-updates from executing. (Affects only this update)') do |url|
+      cli_opts[:force] = 1
+    end
     opts.on('-b', '--basepath PATH', 'base path for stacks; defaults to ./stacks') do |basepath|
       cli_opts[:basepath] = basepath
     end
@@ -136,6 +139,12 @@ eot
   opts['StackName'] = stack_name
   opts['EnvironmentName'] = environment_name
   opts['EnvironmentType'] = environment_type
+
+  if cli_opts[:force]
+    opts['Force'] = 'true'
+  else
+    opts['Force'] = 'true'
+   end
  
   uploader = CfnPP::Uploader.new('manta-cloudformation', stack_name)
 
