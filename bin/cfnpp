@@ -39,7 +39,7 @@ eot
     opts.on('-d', '--deployconfig URL', 'stackhub URL for deployconfig') do |url|
       cli_opts[:deployconfig] = url
     end
-    opts.on('-f', '--force', 'Force stack update and disable cancel-bad-rolling-updates from executing. (Affects only this update)') do |url|
+    opts.on('-F', '--force', 'Force stack update and disable cancel-bad-rolling-updates from executing. (Affects only this update)') do |url|
       cli_opts[:force] = 1
     end
     opts.on('-b', '--basepath PATH', 'base path for stacks; defaults to ./stacks') do |basepath|
