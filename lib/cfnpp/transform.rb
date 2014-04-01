@@ -173,13 +173,16 @@ module CfnPP
             inline = rec["inline"]
             name = rec["name"]
             rec.delete("inline")
-            rec["result"] = self.class.new(inline, @filebase, @opts, name, @stack_url_base).as_template_result
+            sub_params = rec["params"] || {}
+            sub_params.merge(@opts)
+            rec["result"] = self.class.new(inline, @filebase, sub_params, name, @stack_url_base).as_template_result
             rec["Resources"] = {} if not rec["Resources"]
             rec["Resources"][name] = {
               "Type" => "AWS::CloudFormation::Stack",
               "Properties" => {
                 "TemplateURL" => rec["result"].url,
-                "TimeoutInMinutes" => 60,
+                "Parameters" => sub_params,
+                "TimeoutInMinutes" => 60
               }
             }
           end
@@ -233,6 +236,10 @@ module CfnPP
     def lift
 
       def lifter(h, tops, store)
+        # this guard is a super ugly hacky
+        if h.has_key? 'Type' and h['Type'] == 'AWS::CloudFormation::Stack'
+          return
+        end
         h.keys.each do |key|
           if h[key].is_a? Hash
             lifter(h[key], tops, store)

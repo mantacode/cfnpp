@@ -1,0 +1,5 @@
+Resources:
+  Key1: v1
+  CfnPPSection:
+    Resources:
+      Key2: v2

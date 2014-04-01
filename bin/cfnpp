@@ -144,7 +144,7 @@ eot
     opts['Force'] = 'true'
   else
     opts['Force'] = 'true'
-   end
+  end
  
   uploader = CfnPP::Uploader.new('manta-cloudformation', stack_name)
 
@@ -298,12 +298,12 @@ def get_template_info()
   instanceid = `/bin/netcat 169.254.169.254 80 -w 1 -q 0 </dev/null && /usr/bin/ec2metadata --instance-id`
   instanceid.chomp!
 
-  template = {
-    :gitrev => gitrev,
-    :gitstatus => gitstatus,
-    :source => source,
-    :instanceid => instanceid
-  }
+  #template = {
+  #  :gitrev => gitrev,
+  #  :gitstatus => gitstatus,
+  #  :source => source,
+  #  :instanceid => instanceid
+  #}
 end
 
 main()

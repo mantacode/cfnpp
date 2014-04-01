@@ -3,6 +3,7 @@
     "foo":  { 
       "Type":  "AWS::CloudFormation::Stack",
       "Properties":  {
+        "Parameters": {},
         "TemplateURL":  "http://example.com/foo-187cb79bb0b43ed250251a391577451bc60261f9c782b5669758d35a7e98ef1f/template.json",
         "TimeoutInMinutes":  60
       }

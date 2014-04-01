@@ -22,5 +22,10 @@ describe "functional tests" do
     And  { output.substacks.length == 1 }
     And  { output.substacks[0].data.should eq (expect_output("#{name}-nest1")) }
   end
+  describe "basic lifting" do
+    Given(:name) { "basic-lifting" }
+    When(:output) { CfnPP::Transform.load_file(input_file(name)) }
+    Then { output.data.should eq(expect_output(name)) }
+  end
 end
 
