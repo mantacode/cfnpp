@@ -144,6 +144,7 @@ module CfnPP
         return replacer.process
       elsif rec["filter"] == 'erb-yaml'
         res = replacer.process_basic
+        #puts "TEXT: #{res}"
         #puts "#{res}"
         #ERB.new rec["txt"]
         return YAML::load(res)
@@ -173,9 +174,8 @@ module CfnPP
             inline = rec["inline"]
             name = rec["name"]
             rec.delete("inline")
-            sub_params = rec["params"] || {}
-            sub_params.merge(@opts)
-            rec["result"] = self.class.new(inline, @filebase, sub_params, name, @stack_url_base).as_template_result
+            sub_params = rec["params"]
+            rec["result"] = self.class.new(inline, @filebase, sub_params.merge(@opts), name, @stack_url_base).as_template_result
             rec["Resources"] = {} if not rec["Resources"]
             rec["Resources"][name] = {
               "Type" => "AWS::CloudFormation::Stack",
@@ -234,7 +234,6 @@ module CfnPP
     # given some defined top keys, find them everywhere, cut them out,
     # and put them back in at the top level. Weirdly fiddly code.
     def lift
-
       def lifter(h, tops, store)
         # this guard is a super ugly hacky
         if h.has_key? 'Type' and h['Type'] == 'AWS::CloudFormation::Stack'

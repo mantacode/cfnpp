@@ -208,6 +208,7 @@ def do_upload(uploader, template_result, opts)
   upload_res = uploader.upload_template(template_result, opts)
 
   if upload_res[:error]
+    puts "error for #{upload_res[:url]}"
     if upload_res[:error] == 'validation_error'
       vs = upload_res[:validation_status]
       puts "validation error code: #{vs[:code]}"
@@ -298,12 +299,12 @@ def get_template_info()
   instanceid = `/bin/netcat 169.254.169.254 80 -w 1 -q 0 </dev/null && /usr/bin/ec2metadata --instance-id`
   instanceid.chomp!
 
-  #template = {
-  #  :gitrev => gitrev,
-  #  :gitstatus => gitstatus,
-  #  :source => source,
-  #  :instanceid => instanceid
-  #}
+  template = {
+    :gitrev => gitrev,
+    :gitstatus => gitstatus,
+    :source => source,
+    :instanceid => instanceid
+  }
 end
 
 main()
