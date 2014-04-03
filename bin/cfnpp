@@ -232,11 +232,22 @@ end
 def after_update(stack, timestamp)
   stack_name = stack.name
   #cmd = "watch -n 10 cfn-describe-stack-events #{stack_name}"
-  cmd = "watch -n 10 bin/get_stack_events.rb #{stack_name}"
-  puts cmd
+  #cmd = "watch -n 10 bin/get_stack_events.rb #{stack_name}"
+  #puts cmd
   if STDIN.tty? && STDOUT.tty?
     puts "STDIN and STDOUT are ttys!"
-    exec cmd
+    
+    stackEvents = Set.new()
+
+    #exec cmd
+    while true
+      get_stack_events( stack.name).reverse_each do |event|
+        if stackEvents.add?( event)
+          puts event
+        end
+      end
+      sleep 5
+    end
   end
   
   # This is all working, tested code, just not sure it belongs here. --stsmith
@@ -265,6 +276,58 @@ def after_update(stack, timestamp)
   #end
   #exit exit_status
 end
+
+def get_stack_events( stack_name)
+
+  events = Array.new()
+
+	AWS.memoize do
+	  cfm = AWS::CloudFormation.new()
+	  stack = cfm.stacks[stack_name]
+	
+	  table = {
+	    'columns' => [ 'timestamp', 'resource_type', 'logical_resource_id', 'resource_status', 'resource_status_reason' ],
+	    'column_maxlengths' => {},
+	    'rows' => []
+	  }
+	
+	  stack.events.each do |event|
+	    row = {}
+	    table['columns'].each do |column_name|
+	      maxlength = table['column_maxlengths'][column_name] || 0
+	      value = sprintf("%s", event.send(column_name))
+	      row[column_name] = value
+	      maxlength = (value.length > maxlength) ? value.length : maxlength
+	      table['column_maxlengths'][column_name] = maxlength
+	    end
+	    table['rows'].push(row)
+	  end
+	
+	  header_row = {}
+	  table['columns'].each do |column_name|
+	    header_row[column_name] = column_name
+	  end
+	
+	  table['rows'].unshift(header_row)
+	  table['rows'].each do |row|
+	    row_text = ''
+	    last_column_name = table['columns'].last
+	    table['columns'].each do |column_name|
+	      if column_name != last_column_name
+	        maxlength = table['column_maxlengths'][column_name] || 0
+	        row_text += sprintf("%-*s", maxlength, row[column_name])
+	        row_text += ' '
+	      else
+	        row_text += sprintf("%s", row[column_name])
+	      end
+	    end
+	    #puts row_text
+      events.push( row_text)
+	  end
+	end
+  return events
+end
+
 
 def get_template_info()
   gitrev = ''
