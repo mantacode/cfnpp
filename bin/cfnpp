@@ -237,17 +237,20 @@ def after_update(stack, timestamp)
   if STDIN.tty? && STDOUT.tty?
     puts "STDIN and STDOUT are ttys!"
     
-    stackEvents = Set.new()
-
-    #exec cmd
-    while true
-      get_stack_events( stack.name).reverse_each do |event|
-        if stackEvents.add?( event)
-          puts event
+    begin
+      stackEvents = Set.new()
+      while true
+        get_stack_events( stack.name).reverse_each do |event|
+          if stackEvents.add?( event)
+            puts event
+          end
         end
+        sleep 5
       end
-      sleep 5
     end
+  end
+  rescue SystemExit, Interrupt
+    exit 0
   end
   
   # This is all working, tested code, just not sure it belongs here. --stsmith
