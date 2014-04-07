@@ -237,7 +237,7 @@ def after_update(stack, timestamp)
   if STDIN.tty? && STDOUT.tty?
     puts "STDIN and STDOUT are ttys!"
     
-    begin
+    #begin
       stackEvents = Set.new()
       while true
         get_stack_events( stack.name).reverse_each do |event|
@@ -245,12 +245,18 @@ def after_update(stack, timestamp)
             puts event
           end
         end
+        get_sub_stacks( stack.name).each do |stack|
+          get_stack_events( stack).reverse.each do |event|
+            if stackEvents.add?(event)
+              puts "NESTED: #{event}"
+            end
+          end
+        end
         sleep 5
       end
-    end
-  end
-  rescue SystemExit, Interrupt
-    exit 0
+    #rescue SystemExit, Interrupt
+    #  exit 0
+    #end
   end
   
   # This is all working, tested code, just not sure it belongs here. --stsmith
@@ -278,6 +284,20 @@ def after_update(stack, timestamp)
   #    exit_status = 0
   #end
   #exit exit_status
+end
+
+def get_sub_stacks( stack_name)
+  stacks = Array.new()
+  AWS.memoize do
+    cfm = AWS::CloudFormation.new()
+    stack = cfm.stacks[stack_name]
+    stack.resource_summaries.each do |resource|
+      if resource[:resource_type] == 'AWS::CloudFormation::Stack'
+        stacks.push( resource[:physical_resource_id] )
+      end
+    end
+  end
+  return stacks
 end
 
 def get_stack_events( stack_name)
