@@ -8,7 +8,7 @@ module CfnPP
       @bucket = AWS::S3.new.buckets[bucketname]
       @stackname = stackname
       @timestamp = new_timestamp
-      @s3_path = "testing/stacks/#{@stackname}/#{@timestamp}"
+      @s3_path = "stacks/#{@stackname}/#{@timestamp}"
       @cfn = AWS::CloudFormation.new
     end
 
