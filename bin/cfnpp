@@ -293,7 +293,9 @@ def get_sub_stacks( stack_name)
     stack = cfm.stacks[stack_name]
     stack.resource_summaries.each do |resource|
       if resource[:resource_type] == 'AWS::CloudFormation::Stack'
-        stacks.push( resource[:physical_resource_id] )
+        if resource[:physical_resource_id].is_a? String
+          stacks.push( resource[:physical_resource_id] )
+        end
       end
     end
   end
