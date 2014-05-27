@@ -58,12 +58,12 @@ module CfnPP
 
     def ploy_update_guard(name, opts)
       if opts['TemplateSource'] == 'ploy'
-        return find_previous_ploy_update(cfn_bucket, opts)
+        return find_previous_ploy_update(opts)
       end
       return nil
     end
 
-    def find_previous_ploy_update(name, opts)
+    def find_previous_ploy_update(opts)
       stack_name = opts['StackName']
       launch_list = @bucket.objects.with_prefix("stacks/#{stack_name}").sort do |a,b|
         a.key <=> b.key
