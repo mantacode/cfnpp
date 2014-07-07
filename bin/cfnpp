@@ -20,6 +20,7 @@ require 'yaml'
 require 'dogapi'
 require 'ploy/yamlreader'
 require 'optparse'
+require 'CfnTools'
 
 def main()
   usage = <<eot
@@ -239,26 +240,14 @@ def after_update(stack, timestamp)
   #puts cmd
   if STDIN.tty? && STDOUT.tty?
     puts "STDIN and STDOUT are ttys!"
-    
-    begin
-      stackEvents = Set.new()
-      while true
-        get_stack_events( stack.name).reverse_each do |event|
-          if stackEvents.add?( event)
-            puts event
-          end
-        end
-        get_sub_stacks( stack.name).each do |substack|
-          get_stack_events( substack).reverse.each do |event|
-            if stackEvents.add?(event)
-              puts "NESTED: #{event}"
-            end
-          end
-        end
-        sleep 5
+    stuff = CfnTools.new( stack.name)
+    while true
+      begin
+        stuff.display_stack_events
+        sleep 10
+      rescue SystemExit, Interrupt
+        exit 0
       end
-    rescue SystemExit, Interrupt
-      exit 0
     end
   else
     puts "done updating"
