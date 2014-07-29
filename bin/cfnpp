@@ -213,8 +213,8 @@ def do_upload(uploader, template_result, opts)
 
   upload_res = uploader.upload_template(template_result, opts)
 
-  if upload_res[:err]
-    if upload_res[:err] == 'validation_error'
+  if upload_res[:error]
+    if upload_res[:error] == 'validation_error'
       vs = upload_res[:validation_status]
       puts "validation error code: #{vs[:code]}"
       puts "validation error message: #{vs[:message]}"
