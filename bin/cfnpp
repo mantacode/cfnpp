@@ -51,6 +51,9 @@ eot
     opts.on('-c', '--conf PATH', 'use PATH instead of $basepath/conf/$environment_type for conf file') do |confpath|
       cli_opts[:confpath] = confpath
     end
+    opts.on('--git-revision-check', "skip update when the stack's current revision matches the new revision") do |revision|
+      cli_opts[:git_revision_check] = revision
+    end
   end
   optparse.parse!
 
@@ -140,10 +143,25 @@ eot
   opts['EnvironmentName'] = environment_name
   opts['EnvironmentType'] = environment_type
 
+  opts['Force'] = 'false'
   if cli_opts[:force]
     opts['Force'] = 'true'
-  else
-    opts['Force'] = 'true'
+  end
+
+  if cli_opts[:git_revision_check]
+    ok = false
+    if action == 'update' && stack.exists?
+      current_revision = stack.params['TemplateGitRevision']
+      puts "Checking current stack git revision (#{current_revision}) against desired revision (#{opts['TemplateGitRevsion']})"
+      if current_revision != opts['TemplateGitRevision']
+        ok = true
+      end
+    end
+
+    unless ok
+      "Skipping update for stack (#{stack_name}) because the stack's new revision (#{opts['TemplateGitRevision']}) matches the current revision"
+      exit
+    end
   end
  
   uploader = CfnPP::Uploader.new('manta-cloudformation', stack_name)
