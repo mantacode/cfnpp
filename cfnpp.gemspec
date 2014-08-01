@@ -1,7 +1,7 @@
 Gem::Specification.new do |s|
   s.name = 'cfnpp'
-  s.version = '0.3.5'
-  s.date = '2014-07-29'
+  s.version = '0.3.6'
+  s.date = '2014-08-01'
   s.summary = 'cfnpp'
   s.description = 'cfnpp',
   s.authors = ["Michael Bruce", "Stephen J. Smith"]

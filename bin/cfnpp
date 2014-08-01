@@ -155,17 +155,17 @@ eot
   end
 
   if cli_opts[:git_revision_check]
-    ok = false
+    needs_update = false
     if action == 'update' && stack.exists?
-      current_revision = stack.params['TemplateGitRevision']
-      puts "Checking current stack git revision (#{current_revision}) against desired revision (#{opts['TemplateGitRevsion']})"
+      current_revision = stack.parameters['TemplateGitRevision']
+      #puts "Checking current stack git revision (#{current_revision}) against desired revision (#{opts['TemplateGitRevision']})"
       if current_revision != opts['TemplateGitRevision']
-        ok = true
+        needs_update = true
       end
     end
 
-    unless ok
-      "Skipping update for stack (#{stack_name}) because the stack's new revision (#{opts['TemplateGitRevision']}) matches the current revision"
+    unless needs_update
+      puts "Skipping update for stack (#{stack_name}) because the stack's current revision (#{current_revision}) matches the new revision"
       exit
     end
   end
