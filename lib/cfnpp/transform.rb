@@ -174,7 +174,7 @@ module CfnPP
             inline = rec["inline"]
             name = rec["name"]
             rec.delete("inline")
-            sub_params = rec["params"]
+            sub_params = rec["params"] || {}
             rec["result"] = self.class.new(inline, @filebase, sub_params.merge(@opts), name, @stack_url_base).as_template_result
             rec["Resources"] = {} if not rec["Resources"]
             rec["Resources"][name] = {
