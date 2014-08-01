@@ -158,14 +158,19 @@ eot
     needs_update = false
     if action == 'update' && stack.exists?
       current_revision = stack.parameters['TemplateGitRevision']
+      new_revision = opts['TemplateGitRevision']
       #puts "Checking current stack git revision (#{current_revision}) against desired revision (#{opts['TemplateGitRevision']})"
-      if current_revision != opts['TemplateGitRevision']
-        needs_update = true
+      if !current_revision.nil? && current_revision.size > 0
+        if !new_revision.nil? && new_revision.size > 0
+          if current_revision != new_revision
+            needs_update = true
+          end
+        end
       end
     end
 
     unless needs_update
-      puts "Skipping update for stack (#{stack_name}) because the stack's current revision (#{current_revision}) matches the new revision"
+      puts "skipping update for stack (#{stack_name}) because the stack's current revision (#{current_revision}) and new revision (#{new_revision}) don't indicate that an update is necessary"
       exit
     end
   end
@@ -375,8 +380,9 @@ def get_template_info()
 
   # Try from ploy package.
   package = `dpkg -S #{pwd} 2>/dev/null`
-  if package && package =~ /^cloudformation-tools:/
-    gitrev = `dpkg-query -W -f='${gitrev}' cloudformation-tools`
+  if package && package =~ /^cloudformation-tools/
+    package.sub!(/:.*/, '')
+    gitrev = `dpkg-query -W -f='${gitrev}' #{package}`
   end
 
   #If stin and stdout or tty then someone is running this from command line.
@@ -388,11 +394,11 @@ def get_template_info()
 
   # Try from git.
   if gitrev == ''
-    gitrev = `/usr/bin/git log --format='%H' -n 1`
+    gitrev = `/usr/bin/git log --format='%H' -n 1 2>/dev/null`
     gitrev.chomp!
     if gitrev
       source = 'git'
-      gitstatus = `git status --porcelain`
+      gitstatus = `/usr/bin/git status --porcelain 2>/dev/null`
     end
   end
 
