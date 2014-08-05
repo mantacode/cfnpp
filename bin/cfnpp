@@ -146,7 +146,7 @@ eot
   puts "loading config from (#{conf_path})"
   conf_yaml = File.read(conf_path)
   opts = YAML::load(conf_yaml)
-  if conf_override_path.size()
+  if conf_override_path.size() > 0
     puts "applying overrides from (#{conf_override_path})"
     conf_override_yaml = File.read(conf_override_path)
     opts_override = YAML::load(conf_override_yaml)

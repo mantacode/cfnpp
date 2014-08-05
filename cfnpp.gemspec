@@ -1,6 +1,6 @@
 Gem::Specification.new do |s|
   s.name = 'cfnpp'
-  s.version = '0.3.9'
+  s.version = '0.3.10'
   s.date = '2014-08-01'
   s.summary = 'cfnpp'
   s.description = 'cfnpp',
