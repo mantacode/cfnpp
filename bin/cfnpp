@@ -52,6 +52,9 @@ eot
     opts.on('-c', '--conf PATH', 'use PATH instead of $basepath/conf/$environment_type for conf file') do |confpath|
       cli_opts[:confpath] = confpath
     end
+    opts.on('-w', '--watch', 'after update, print stack events every 10 seconds') do |watch|
+      cli_opts[:watch] = watch
+    end
     opts.on('--git-revision-check', "skip update when the stack's current revision matches the new revision") do |revision|
       cli_opts[:git_revision_check] = revision
     end
@@ -241,7 +244,7 @@ eot
                          :capabilities => ['CAPABILITY_IAM'])
   end
   
-  after_update(stack, timestamp)
+  after_update(stack, timestamp, cli_opts)
 end
 
 def do_upload(uploader, template_result, opts)
@@ -273,23 +276,25 @@ def do_upload(uploader, template_result, opts)
 
 end
 
-def after_update(stack, timestamp)
+def after_update(stack, timestamp, cli_opts)
   #cmd = "watch -n 10 cfn-describe-stack-events #{stack_name}"
   #cmd = "watch -n 10 bin/get_stack_events.rb #{stack_name}"
   #puts cmd
-  if STDIN.tty? && STDOUT.tty?
-    puts "STDIN and STDOUT are ttys!"
-    stuff = CfnTools.new( stack.name)
-    while true
-      begin
-        stuff.display_stack_events
-        sleep 10
-      rescue SystemExit, Interrupt
-        exit 0
+  if cli_opts[:watch]
+    if STDIN.tty? && STDOUT.tty?
+      puts "STDIN and STDOUT are ttys!"
+      stuff = CfnTools.new( stack.name)
+      while true
+        begin
+          stuff.display_stack_events
+          sleep 10
+        rescue SystemExit, Interrupt
+          exit 0
+        end
       end
+    else
+      puts "done updating"
     end
-  else
-    puts "done updating"
   end
   
   # This is all working, tested code, just not sure it belongs here. --stsmith
