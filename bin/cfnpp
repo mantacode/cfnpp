@@ -99,6 +99,15 @@ eot
   stack_name = "#{stack_type}--#{environment_name}--#{environment_type}"
   conf_path = cli_opts[:confpath] || "#{basepath}/#{stack_type}/conf/#{environment_type}.yml"
 
+  # Support config overrides for specific environment names, if such a file exists.
+  conf_override_path = ''
+  unless cli_opts[:confpath]
+    conf_override_path = "#{basepath}/#{stack_type}/conf/#{environment_name}.yml"
+    if !File.file?(conf_override_path)
+      conf_override_path = ''
+    end
+  end
+
   stack = cfn.stacks[stack_name]
   if stack.exists?
     status = stack.status
@@ -134,8 +143,15 @@ eot
     exit 1
   end
   
+  puts "loading config from (#{conf_path})"
   conf_yaml = File.read(conf_path)
   opts = YAML::load(conf_yaml)
+  if conf_override_path.size()
+    puts "applying overrides from (#{conf_override_path})"
+    conf_override_yaml = File.read(conf_override_path)
+    opts_override = YAML::load(conf_override_yaml)
+    opts.merge!(opts_override)
+  end
   
   timestamp = Time.now.utc.strftime("%Y-%m-%dT%H.%M.%S.%LZ")
   template_info = get_template_info()
