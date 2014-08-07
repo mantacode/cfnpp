@@ -5,6 +5,7 @@ Cloudformation Preprocessor
 ## Installation
 
 While in the cfnpp repo directory
+
 ```
 $ sudo ./install.sh
 ```
