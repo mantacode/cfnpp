@@ -292,10 +292,9 @@ def after_update(stack, timestamp, cli_opts)
           exit 0
         end
       end
-    else
-      puts "done updating"
     end
   end
+  puts "done updating"
   
   # This is all working, tested code, just not sure it belongs here. --stsmith
   #stack_timestamp = ''

@@ -1,12 +1,12 @@
 GEM
   remote: http://rubygems.org/
   specs:
-    CfnTools (0.0.13)
+    CfnTools (0.0.17)
     addressable (2.3.6)
     arr-pm (0.0.9)
       cabin (> 0)
     awesome_print (1.2.0)
-    aws-sdk (1.49.0)
+    aws-sdk (1.50.0)
       json (~> 1.4)
       nokogiri (>= 1.4.4)
     backports (3.6.0)
@@ -54,7 +54,7 @@ GEM
     net-http-pipeline (1.0.1)
     nokogiri (1.6.3.1)
       mini_portile (= 0.6.0)
-    ploy (0.0.19)
+    ploy (0.0.21)
       aws-sdk
       fpm
       sinatra
@@ -91,7 +91,7 @@ GEM
     slop (3.6.0)
     sorcerer (1.0.2)
     tilt (1.4.1)
-    travis (1.6.17)
+    travis (1.7.0)
       addressable (~> 2.3)
       backports
       faraday (~> 0.9)
