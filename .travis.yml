@@ -1,0 +1,10 @@
+language: ruby
+rvm:
+- 1.9.3
+cache:
+- bundler
+script: bundle exec rspec spec
+deploy:
+  provider: rubygems
+  api_key:
+    secure: hOEGBfVRhkWqfhKrV493yj/pZLsdmEo0iJiSmoIHfsAaDVO2e4ypJE8yyHxu7d8HPobupp0FS1GQ3nBuur5XAg+4+xepBA3E4ytHHo2tVCWS6+ljfZ2PfsuBGWQ79tcBei4zuRi30696X8xoKMMsMa4ZEiVrJnSuIHjKV75wkhY=
