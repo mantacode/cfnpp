@@ -1023,7 +1023,7 @@ GEM
     pusher-client (0.6.2)
       json
       websocket (~> 1.0)
-    rack (2.2.3)
+    rack (2.2.6.4)
     rack-protection (2.1.0)
       rack
     rake (13.0.1)
